@@ -165,8 +165,7 @@ typedef struct Layer_s {
   struct Layer_s *next;
 } Layer;	
 
-/** Compute layer's bounding box.
- */
+/** Compute layer's bounding box. */
 void layerGetBounds(const Layer *l, Region *bounds);
 
 /**
