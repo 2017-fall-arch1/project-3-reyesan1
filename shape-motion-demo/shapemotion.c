@@ -26,8 +26,8 @@ Region p2;
 AbRect rect1 = {abRectGetBounds, abRectCheck, {5,10}}; /**< 5x5 rectangle */
 AbRect rect2 = {abRectGetBounds, abRectCheck, {5,10}}; /**< 5x5 rectangle */
 
-u_char points1 =0;
-u_char points2=0;
+char points1 = 0;
+char points2 = 0;
 
 AbRectOutline fieldOutline = {	/* playing field */
   abRectOutlineGetBounds, abRectOutlineCheck,   
@@ -137,32 +137,54 @@ void mlAdvance(MovLayer *ml, Region *fence, Region *paddle1, Region *paddle2)
   u_char axis;
   Region shapeBoundary;
   int velocity;
-  //for (; ml; ml = ml->next) {
-    vec2Add(&newPos, &ml->layer->posNext, &ml->velocity);
-    abShapeGetBounds(ml->layer->abShape, &newPos, &shapeBoundary);
-    if(((shapeBoundary.topLeft.axes[1] < paddle1->botRight.axes[1]) && (shapeBoundary.topLeft.axes[1] > paddle1->topLeft.axes[1]) && (shapeBoundary.topLeft.axes[0] <= paddle1->botRight.axes[0])) ||((shapeBoundary.botRight.axes[1] > paddle2->topLeft.axes[1]) && (shapeBoundary.botRight.axes[0] >= paddle2->topLeft.axes[0]) && (shapeBoundary.botRight.axes[1] < paddle2->botRight.axes[1])) ){
-  	velocity = ml->velocity.axes[0] = -ml->velocity.axes[0];
-	newPos.axes[0] += (2*velocity);
-    }
-    //Ball bounces off of top and bottom walls
-    if ((shapeBoundary.topLeft.axes[1] < fence->topLeft.axes[1]) ||
-	(shapeBoundary.botRight.axes[1] > fence->botRight.axes[1])){
-      velocity = ml->velocity.axes[1] = -ml->velocity.axes[1];
-      newPos.axes[1] += (2*velocity);
-      
-    }
-    //If ball hits left vertical wall
-    if ((shapeBoundary.topLeft.axes[0] < fence->topLeft.axes[0])){
-      points1++;
-      
-    }
-    //If ball hits right vertical wall
-    if ((shapeBoundary.botRight.axes[0] < fence->botRight.axes[0])){
-      points2++;
-      
-    }
+ 
+  vec2Add(&newPos, &ml->layer->posNext, &ml->velocity);
+  abShapeGetBounds(ml->layer->abShape, &newPos, &shapeBoundary);
 
-    ml->layer->posNext = newPos;
+  if(((shapeBoundary.topLeft.axes[1] < paddle1->botRight.axes[1]) && (shapeBoundary.topLeft.axes[1] > paddle1->topLeft.axes[1]) && (shapeBoundary.topLeft.axes[0] <= paddle1->botRight.axes[0])) ||((shapeBoundary.botRight.axes[1] > paddle2->topLeft.axes[1]) && (shapeBoundary.botRight.axes[0] >= paddle2->topLeft.axes[0]) && (shapeBoundary.botRight.axes[1] < paddle2->botRight.axes[1])) ){
+    velocity = ml->velocity.axes[0] = -ml->velocity.axes[0];
+    newPos.axes[0] += (2*velocity);
+    //buzzer_init();
+    buzzer_set_period(6000);
+    //buzzer_set_period(0);
+   
+  }
+  //Ball bounces off of top and bottom walls
+  if ((shapeBoundary.topLeft.axes[1] < fence->topLeft.axes[1]) ||
+      (shapeBoundary.botRight.axes[1] > fence->botRight.axes[1])){
+    velocity = ml->velocity.axes[1] = -ml->velocity.axes[1];
+    newPos.axes[1] += (2*velocity);
+  }
+  //If ball hits left vertical wall
+  if ((shapeBoundary.topLeft.axes[0] < fence->topLeft.axes[0])){
+    buzzer_set_period(2000);
+    points1++;
+    ml0.layer->posNext.axes[0]= (screenWidth/2);
+    ml0.layer->posNext.axes[1]= (screenHeight/2);
+    movLayerDraw(&ml3,&layer1);
+    movLayerDraw(&ml1,&layer1);
+    movLayerDraw(&ml0,&layer1);
+    movLayerDraw(&ml0,&layer1);
+    return;
+    
+    
+  }
+  //If ball hits right vertical wall
+  if ((shapeBoundary.botRight.axes[0] > fence->botRight.axes[0])){
+    buzzer_set_period(2000);
+    points2++;
+    ml0.layer->posNext.axes[0]= (screenWidth/2);
+    ml0.layer->posNext.axes[1]= (screenHeight/2);
+    movLayerDraw(&ml3,&layer1);
+    movLayerDraw(&ml1,&layer1);
+    movLayerDraw(&ml0,&layer1);
+    movLayerDraw(&ml0,&layer1);
+    return;
+    
+    
+  }
+  
+  ml->layer->posNext = newPos;
 } /**< for ml */
 
 
@@ -181,9 +203,9 @@ void main()
   configureClocks();
   lcd_init();
   shapeInit();
-  //p2sw_init(1);
-  buzzer_init();
+ 
   shapeInit();
+  //buzzer_init();
 
   layerInit(&layer0);
   layerDraw(&layer0);
@@ -192,7 +214,7 @@ void main()
  
   layerGetBounds(&layer3, &p1);
   layerGetBounds(&layer1, &p2);
- 
+
   p2sw_init(15);
   enableWDTInterrupts();      /**< enable periodic interrupt */
   or_sr(0x8);	              /**< GIE (enable interrupts) */
@@ -208,19 +230,12 @@ void main()
       or_sr(0x10);	      /**< CPU OFF */
     }
     drawString5x7(10,10, "score:", COLOR_BLACK, bgColor);
-    P1OUT |= GREEN_LED;       /**< Green led on when CPU on */
   
-    //drawString5x7(20,20, str, COLOR_BLACK, bgColor);
+   
+    P1OUT |= GREEN_LED;       /**< Green led on when CPU on */
       
     redrawScreen = 0;
-    //p2sw_init(15);
-  
-    // u_int switches = p2sw_read();
-    // if((switches&=128) == 0){
-    // layer3.pos.axes[1]+10;
-    
-  
-    //movLayerDraw(&ml0, &layer0);
+ 
 }
  
 
@@ -232,17 +247,48 @@ void wdt_c_handler()
   static short count = 0;
   P1OUT |= GREEN_LED;		      /**< Green LED on when cpu on */
   count ++;
- 
+
   if (count == 15) {
+    buzzer_init();
     layerGetBounds(&fieldLayer, &fieldFence);
     layerGetBounds(&layer3, &p1);
     layerGetBounds(&layer1, &p2);
     movLayerDraw(&ml0, &layer0);
     mlAdvance(&ml0, &fieldFence, &p1, &p2);
+    char score[5] = "P2-0";
+    char score2[5] = "P1-0";
+    score[3] = '0'+points1;
+    score2[3] = '0'+points2;
+    if(score[3] == '9' || score2[3] == '9'){
+      buzzer_set_period(0);
+      AbRect rect = {abRectGetBounds, abRectCheck, {160,160}}; 
+      Layer gameOver = {		/* playing field as a layer */
+	(AbShape *) &rect,
+	{screenWidth, screenHeight},
+	{0,0}, {0,0},				    /* last & next pos */
+	COLOR_RED,
+	0
+      };
+      layerInit(&gameOver);
+      layerDraw(&gameOver);
+      if(score[3] == '9'){
+	drawString5x7((screenWidth/2)-40,(screenHeight/2),"P2 WINNER!!", COLOR_BLUE, COLOR_RED);
+	return;
+      }
+      if(score2[3] == '9'){
+	drawString5x7((screenWidth/2)-40,(screenHeight/2),"P1 WINNER!!", COLOR_BLUE, COLOR_RED);
+	return;
+      }
+    }
+    else{
+      drawString5x7(80,20, score, COLOR_BLACK, bgColor);
+      drawString5x7(20,20, score2, COLOR_BLACK, bgColor);
+    }
     if (p2sw_read())
       redrawScreen = 1;
 
-  u_int switches = p2sw_read(), i;
+   
+    u_int switches = p2sw_read(), i;
     char str[5];
     for (i = 0; i < 4; i++)
       if(!(switches & (1<<i))){
